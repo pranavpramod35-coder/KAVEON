@@ -1042,25 +1042,28 @@
         </div>
       </div>
     </div>
-    <div class="contact-form reveal">
+    <form class="contact-form reveal" id="contactForm" action="https://formspree.io/f/xvzlaelo" method="POST">
       <div class="form-group">
         <label class="form-label">Your Name</label>
-        <input type="text" class="form-input" placeholder="John Doe">
+        <input type="text" class="form-input" name="name" placeholder="John Doe" required>
       </div>
       <div class="form-group">
         <label class="form-label">Email Address</label>
-        <input type="email" class="form-input" placeholder="john@example.com">
+        <input type="email" class="form-input" name="email" placeholder="john@example.com" required>
       </div>
       <div class="form-group">
         <label class="form-label">Service Interested In</label>
-        <input type="text" class="form-input" placeholder="e.g. Social Media, Web Development">
+        <input type="text" class="form-input" name="service" placeholder="e.g. Social Media, Web Development">
       </div>
       <div class="form-group">
         <label class="form-label">Tell Us About Your Project</label>
-        <textarea class="form-textarea" placeholder="Describe your goals and vision..."></textarea>
+        <textarea class="form-textarea" name="message" placeholder="Describe your goals and vision..." required></textarea>
       </div>
-      <button class="form-submit">Send Message →</button>
-    </div>
+      <!-- Hidden field to set reply-to -->
+      <input type="hidden" name="_replyto" value="">
+      <div id="formMsg" style="display:none;padding:1rem;border-radius:4px;margin-bottom:1rem;font-size:0.9rem;"></div>
+      <button type="submit" class="form-submit" id="submitBtn">Send Message →</button>
+    </form>
   </div>
 </section>
 
@@ -1159,14 +1162,70 @@
   const strip = document.querySelector('.stats-strip');
   if (strip) statsObserver.observe(strip);
 
-  // Form submit
-  document.querySelector('.form-submit').addEventListener('click', function() {
-    this.textContent = 'Message Sent ✓';
-    this.style.background = 'linear-gradient(135deg,#2ecc71,#27ae60)';
-    setTimeout(() => {
-      this.textContent = 'Send Message →';
-      this.style.background = '';
-    }, 3000);
+  // Form submit via Formspree AJAX
+  const contactForm = document.getElementById('contactForm');
+  const submitBtn = document.getElementById('submitBtn');
+  const formMsg = document.getElementById('formMsg');
+
+  contactForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    // Set reply-to from email field
+    const emailVal = contactForm.querySelector('input[name="email"]').value;
+    contactForm.querySelector('input[name="_replyto"]').value = emailVal;
+
+    submitBtn.textContent = 'Sending…';
+    submitBtn.disabled = true;
+    submitBtn.style.opacity = '0.7';
+    formMsg.style.display = 'none';
+
+    try {
+      const response = await fetch(contactForm.action, {
+        method: 'POST',
+        body: new FormData(contactForm),
+        headers: { 'Accept': 'application/json' }
+      });
+
+      if (response.ok) {
+        // Success
+        formMsg.textContent = '✓ Message sent! We\'ll get back to you soon.';
+        formMsg.style.display = 'block';
+        formMsg.style.background = 'rgba(46,204,113,0.15)';
+        formMsg.style.border = '1px solid rgba(46,204,113,0.4)';
+        formMsg.style.color = '#2ecc71';
+        submitBtn.textContent = 'Message Sent ✓';
+        submitBtn.style.background = 'linear-gradient(135deg,#2ecc71,#27ae60)';
+        submitBtn.style.opacity = '1';
+        contactForm.reset();
+        setTimeout(() => {
+          submitBtn.textContent = 'Send Message →';
+          submitBtn.style.background = '';
+          submitBtn.disabled = false;
+          formMsg.style.display = 'none';
+        }, 5000);
+      } else {
+        // Formspree returned an error
+        const data = await response.json();
+        const errMsg = (data.errors && data.errors.map(e => e.message).join(', ')) || 'Something went wrong. Please try again.';
+        formMsg.textContent = '✗ ' + errMsg;
+        formMsg.style.display = 'block';
+        formMsg.style.background = 'rgba(231,76,60,0.15)';
+        formMsg.style.border = '1px solid rgba(231,76,60,0.4)';
+        formMsg.style.color = '#e74c3c';
+        submitBtn.textContent = 'Send Message →';
+        submitBtn.style.opacity = '1';
+        submitBtn.disabled = false;
+      }
+    } catch (err) {
+      formMsg.textContent = '✗ Network error. Please check your connection and try again.';
+      formMsg.style.display = 'block';
+      formMsg.style.background = 'rgba(231,76,60,0.15)';
+      formMsg.style.border = '1px solid rgba(231,76,60,0.4)';
+      formMsg.style.color = '#e74c3c';
+      submitBtn.textContent = 'Send Message →';
+      submitBtn.style.opacity = '1';
+      submitBtn.disabled = false;
+    }
   });
 </script>
 </body>
